@@ -16,5 +16,8 @@ The script was only written with GUI, which means that it does not need any exte
 
 With the program dnSpy (https://github.com/dnSpy/dnSpy) you can add the script to a compiled Unity game, but you have to add the script somewhere, which should be easy!
 
+## Video Showcase
+Tested with Yooka Laylee https://youtu.be/AGOgQwyecIE
+
 ## Is3D Boolean
 Don't forget to set the is3D bool correctly in the script!
