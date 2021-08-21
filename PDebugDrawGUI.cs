@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 
 public class PDebugDrawGUI : MonoBehaviour{
@@ -8,25 +9,28 @@ public class PDebugDrawGUI : MonoBehaviour{
     public static PDebugDrawGUI instance = null;
 
     private int currentState = 0;/*0 = Console , 1 = Objects , 2 = Change , 3 = Components , 4 = Time , 5 = Childrens , 6 = TargetCamera*/
-    private string consoleString = string.Empty;
-    private GameObject targetObject = null;
-    private Camera targetCamera = null;
+    private string consoleString = string.Empty;/*Console Log*/
+    private GameObject targetObject = null;/*Current GameObject in Objects Tab*/
+    private Camera targetCamera = null;/*Camera that calculating the Ray*/
 
-    private bool is3D = true;
+    private bool is3D = false;/*This Script use a other Ray for 3D Games!*/
 
     private void Awake(){
         targetCamera = Camera.main;
 
-        if(instance == null){
-            instance = this;
-            DontDestroyOnLoad(this);
+        /*Check if an instance allready exits and if exits destroy this else create a new gameobject with the instance*/
+        if(instance == null){      
+            if(gameObject.name != "PDEBUG-INSTANCE"){
+                GameObject gm = new GameObject("PDEBUG-INSTANCE");
+                instance = gm.AddComponent<PDebugDrawGUI>();
+                DontDestroyOnLoad(instance);
+                Destroy(this);
+            }
         }
-        else if(instance != this){
+        else if(instance != this)
             Destroy(this);
-        }
 
-        Application.logMessageReceived += HandleLog;
-        Debug.Log("PDebug started successfully!");
+        Application.logMessageReceived += HandleLog;/*Register Console Log*/
     }
 
     private void Update(){
@@ -34,15 +38,14 @@ public class PDebugDrawGUI : MonoBehaviour{
         Cursor.lockState = CursorLockMode.None;
 
         if(currentState == 1){
-            if (Input.GetKeyDown(KeyCode.I)){
-                if (!is3D){
-                    Ray ray = targetCamera.ScreenPointToRay(Input.mousePosition);
+            if (Input.GetKeyDown(KeyCode.I)){/*Try to get a TargetObject for the Objects Tab*/
+                Ray ray = targetCamera.ScreenPointToRay(Input.mousePosition);
+                if (!is3D){/*2D*/
                     RaycastHit2D hit = Physics2D.GetRayIntersection(ray, Mathf.Infinity);
                     if (hit.collider != null)
                         targetObject = hit.collider.gameObject;
                 }
-                else{
-                    Ray ray = targetCamera.ScreenPointToRay(Input.mousePosition);                  
+                else{/*3D*/         
                     RaycastHit hit;
                     if (Physics.Raycast(ray, out hit)){
                         if (hit.collider != null)
@@ -101,8 +104,7 @@ public class PDebugDrawGUI : MonoBehaviour{
     private void DrawChildrens(){
         GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Childrens");
 
-        if (targetObject != null)
-        {
+        if (targetObject != null){
             if (GUI.Button(new Rect(300f, 125f, 70f, 20f), "Back"))
                 currentState = 1;
 
@@ -119,7 +121,7 @@ public class PDebugDrawGUI : MonoBehaviour{
                     lastY = lastY + 25;
                 }
                 catch (Exception e){
-
+                    Debug.LogWarning(e.Message);
                 }
             }
         }
@@ -131,8 +133,7 @@ public class PDebugDrawGUI : MonoBehaviour{
             currentState = 1;
 
         float lastY = 30;
-        for (int i = 0; i < Camera.allCameras.Length; i++)
-        {
+        for (int i = 0; i < Camera.allCameras.Length; i++){
             try
             {
                 GUI.Label(new Rect(10f, lastY, 300f, 30f), Camera.allCameras[i].name);
@@ -145,7 +146,7 @@ public class PDebugDrawGUI : MonoBehaviour{
                 lastY = lastY + 25;
             }
             catch (Exception e){
-
+                Debug.LogWarning(e.Message);
             }
         }
     }
@@ -254,7 +255,7 @@ public class PDebugDrawGUI : MonoBehaviour{
 
                     lastY = lastY + 25;
                 }catch(Exception e){
-
+                    Debug.LogWarning(e.Message);
                 }
             }
         }
