@@ -3,12 +3,13 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class PDebugDrawGUI : MonoBehaviour{
 
     public static PDebugDrawGUI instance = null;
 
-    private int currentState = 0;/*0 = Console , 1 = Objects , 2 = Change , 3 = Components , 4 = Time , 5 = Childrens , 6 = TargetCamera*/
+    private int currentState = 0;/*0 = Console , 1 = Objects , 2 = Change , 3 = Components , 4 = Time , 5 = Childrens , 6 = TargetCamera , 7 = Scene , 8 = LoadScene*/
     private string consoleString = string.Empty;/*Console Log*/
     private GameObject targetObject = null;/*Current GameObject in Objects Tab*/
     private Camera targetCamera = null;/*Camera that calculating the Ray*/
@@ -17,9 +18,9 @@ public class PDebugDrawGUI : MonoBehaviour{
 
     private void Awake(){
         targetCamera = Camera.main;
-
+  
         /*Check if an instance allready exits and if exits destroy this else create a new gameobject with the instance*/
-        if(instance == null){      
+        if (instance == null){      
             if(gameObject.name != "PDEBUG-INSTANCE"){
                 GameObject gm = new GameObject("PDEBUG-INSTANCE");
                 instance = gm.AddComponent<PDebugDrawGUI>();
@@ -81,16 +82,29 @@ public class PDebugDrawGUI : MonoBehaviour{
             case 6:
                 DrawTargetCamera();
                 break;
+            case 7:
+                DrawScene();
+                break;
+            case 8:
+                DrawLoadScene();
+                break;
+            case 9:
+                DrawApplication();
+                break;
         }
     }
 
     private void DrawMainButtons(){
-        if (GUI.Button(new Rect(10f, 155f, 70f, 20f), "Console"))
+        if (GUI.Button(new Rect(5f, 155f, 70f, 20f), "Console"))
             currentState = 0;
-        if (GUI.Button(new Rect(85f, 155f, 70f, 20f), "Objects"))
+        if (GUI.Button(new Rect(80f, 155f, 70f, 20f), "Objects"))
             currentState = 1;
-        if (GUI.Button(new Rect(160f, 155f, 70f, 20f), "Time"))
+        if (GUI.Button(new Rect(155f, 155f, 70f, 20f), "Time"))
             currentState = 4;
+        if (GUI.Button(new Rect(230f, 155f, 70f, 20f), "Scene"))
+            currentState = 7;
+        if (GUI.Button(new Rect(305f, 155f, 70f, 20f), "Applicat-"))
+            currentState = 9;
     }
 
     private void DrawConsole(){
@@ -101,6 +115,76 @@ public class PDebugDrawGUI : MonoBehaviour{
             consoleString = string.Empty;
     }
 
+    private void DrawScene(){
+        GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Scene");
+        GUI.Label(new Rect(10f, 30f, 200f, 50f), "ActiveScene: "+SceneManager.GetActiveScene().name);
+        if (GUI.Button(new Rect(10f, 70f, 85f, 20f), "Load Scene"))
+            currentState = 8;
+    }
+
+    private int loadSceneBeginValue = 0;
+    private void DrawLoadScene(){
+        GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Load Scene");
+        if (GUI.Button(new Rect(300f, 125f, 70f, 20f), "Back"))
+            currentState = 7;
+
+        int maxProSite = 4;
+        float lastY = 30;
+        int lenght = UnityEngine.SceneManagement.SceneManager.sceneCountInBuildSettings;
+        if (UnityEngine.SceneManagement.SceneManager.sceneCountInBuildSettings > maxProSite)
+        {
+            lenght = maxProSite;
+            if (loadSceneBeginValue + 1 < UnityEngine.SceneManagement.SceneManager.sceneCountInBuildSettings - 3)
+            {
+                if (GUI.Button(new Rect(10f, 125f, 70f, 20f), "↓"))
+                    loadSceneBeginValue++;
+            }
+
+            if (loadSceneBeginValue != 0)
+            {
+                if (GUI.Button(new Rect(90f, 125f, 70f, 20f), "↑"))
+                    loadSceneBeginValue--;
+            }
+        }
+        else
+            loadSceneBeginValue = 0;
+
+        int z = 0;
+        for (int i = loadSceneBeginValue; z < lenght; i++)
+        {
+            try
+            {
+                if (i < UnityEngine.SceneManagement.SceneManager.sceneCountInBuildSettings)
+                {
+                    string sceneName = i.ToString();
+
+                    GUI.Label(new Rect(10f, lastY, 300f, 30f), sceneName);
+
+                    if (GUI.Button(new Rect(200f, lastY, 70f, 20f), "Load"))
+                        SceneManager.LoadScene(i);
+
+                    lastY = lastY + 22;
+                    z++;
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning(e.Message);
+            }
+        }
+    }
+
+
+    private void DrawApplication(){
+        GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Application");
+        GUI.Label(new Rect(10f, 30f, 200f, 50f), "RunInBackground: " + Application.runInBackground);
+        GUI.Label(new Rect(10f, 50f, 200f, 50f), "UnityVersion: " + Application.unityVersion);
+        GUI.Label(new Rect(10f, 120f, 200f, 50f), "PDebug by PandaHexCode");
+        if (GUI.Button(new Rect(170f, 34f, 70f, 15f), "Switch"))
+            Application.runInBackground = !Application.runInBackground;
+    }
+
+    private int childrensBeginValue = 0;
     private void DrawChildrens(){
         GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Childrens");
 
@@ -108,17 +192,40 @@ public class PDebugDrawGUI : MonoBehaviour{
             if (GUI.Button(new Rect(300f, 125f, 70f, 20f), "Back"))
                 currentState = 1;
 
+            int maxProSite = 4;
             float lastY = 30;
-            for (int i = 0; i < targetObject.transform.childCount; i++) {
+            int lenght = targetObject.transform.childCount;
+            if (targetObject.transform.childCount > maxProSite){
+                lenght = maxProSite;
+                if (childrensBeginValue + 1 < targetObject.transform.childCount - 3){
+                    if (GUI.Button(new Rect(10f, 125f, 70f, 20f), "↓"))
+                        childrensBeginValue++;
+                }
+
+                if (childrensBeginValue != 0){
+                    if (GUI.Button(new Rect(90f, 125f, 70f, 20f), "↑"))
+                        childrensBeginValue--;
+                }
+            }
+            else
+                childrensBeginValue = 0;
+
+            int z = 0;
+            for (int i = childrensBeginValue; z < lenght; i++) {
                 try{
-                    GUI.Label(new Rect(10f, lastY, 300f, 30f), targetObject.transform.GetChild(i).name);
+                    if (i < targetObject.transform.childCount ){
+                        GUI.Label(new Rect(10f, lastY, 300f, 30f), targetObject.transform.GetChild(i).name);
 
-                    if (GUI.Button(new Rect(200f, lastY, 70f, 20f), "Edit")){
-                        targetObject = targetObject.transform.GetChild(i).gameObject;
-                        currentState = 1;
+                        if (GUI.Button(new Rect(200f, lastY, 70f, 20f), "Edit"))
+                        {
+                            currentState = 1;
+                            targetObject = targetObject.transform.GetChild(i).gameObject;
+                            return;
+                        }
+
+                        lastY = lastY + 25;
+                        z++;
                     }
-
-                    lastY = lastY + 25;
                 }
                 catch (Exception e){
                     Debug.LogWarning(e.Message);
@@ -226,6 +333,7 @@ public class PDebugDrawGUI : MonoBehaviour{
             currentState = 1;
     }
 
+    private int componentsBeginValue = 0;
     private void DrawComponents(){
         GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Components");
 
@@ -233,29 +341,64 @@ public class PDebugDrawGUI : MonoBehaviour{
             if (GUI.Button(new Rect(300f, 125f, 70f, 20f), "Back"))
                 currentState = 1;
 
+            int maxProSite = 4;
             float lastY = 30;
-            for (int i = 0; i < targetObject.GetComponents(typeof(Component)).Length; i++){
-                try{
-                    Component comp = targetObject.GetComponents(typeof(Component))[i];
-                    Behaviour behaviour = (Behaviour)comp;
-                    string compName = comp.ToString();
-                    compName = compName.Replace("UnityEngine.", "");
+            int lenght = targetObject.GetComponents(typeof(Component)).Length;
+            if (targetObject.GetComponents(typeof(Component)).Length > maxProSite)
+            {
+                lenght = maxProSite;
+                if (componentsBeginValue + 1 < targetObject.GetComponents(typeof(Component)).Length - 3)
+                {
+                    if (GUI.Button(new Rect(10f, 125f, 70f, 20f), "↓"))
+                        componentsBeginValue++;
+                }
 
-                    GUI.Label(new Rect(10f, lastY, 300f, 30f), compName);
+                if (componentsBeginValue != 0)
+                {
+                    if (GUI.Button(new Rect(90f, 125f, 70f, 20f), "↑"))
+                        componentsBeginValue--;
+                }
+            }
+            else
+                componentsBeginValue = 0;
 
-                    string buttonName;
-                    if (behaviour.enabled)
-                        buttonName = "Disable";
-                    else
-                        buttonName = "Enable"; 
+            int z = 0;
+            for (int i = componentsBeginValue; z < lenght; i++)
+            {
+                try
+                {
+                    if (i < targetObject.GetComponents(typeof(Component)).Length)
+                    {
+                        Component comp = targetObject.GetComponents(typeof(Component))[i];
+                        Behaviour behaviour = (Behaviour)comp;
+                        string compName = comp.ToString();
+                        compName = compName.Replace("UnityEngine.", "");
 
-                    if (GUI.Button(new Rect(200f, lastY, 70f, 20f), buttonName)){
-                        behaviour.enabled = !behaviour.enabled;
+                        GUI.Label(new Rect(10f, lastY, 300f, 30f), compName);
+
+                        string buttonName;
+                        if (behaviour.enabled)
+                            buttonName = "Disable";
+                        else
+                            buttonName = "Enable";
+
+                        if (GUI.Button(new Rect(200f, lastY, 70f, 20f), buttonName))
+                        {
+                            behaviour.enabled = !behaviour.enabled;
+                        }
+
+                        lastY = lastY + 25;
+                        z++;
                     }
-
+                    else
+                        return;
+                }
+                catch (Exception e)
+                {
+                    Component comp = targetObject.GetComponents(typeof(Component))[i];
+                    GUI.Label(new Rect(10f, lastY, 300f, 30f), comp.ToString());
                     lastY = lastY + 25;
-                }catch(Exception e){
-                    Debug.LogWarning(e.Message);
+                    z++;
                 }
             }
         }
