@@ -247,6 +247,7 @@ public class PDebugDrawGUI : MonoBehaviour{
 
                 if (GUI.Button(new Rect(200f, lastY, 70f, 20f), "Choose")){
                     targetCamera = Camera.allCameras[i];
+                    targetObject = targetCamera.gameObject;
                     currentState = 1;
                 }
 
@@ -415,6 +416,8 @@ public class PDebugDrawGUI : MonoBehaviour{
 
             if (GUI.Button(new Rect(10f, 100f, 70f, 20f), "Destroy"))
                 Destroy(targetObject);
+            if (GUI.Button(new Rect(10f, 75f, 70f, 20f), "Copy"))
+                Instantiate(targetObject);
 
             string swtichActiveString = string.Empty;
             if (targetObject.active)
@@ -433,7 +436,7 @@ public class PDebugDrawGUI : MonoBehaviour{
             }
 
             if(targetObject.transform.childCount > 0){
-                if (GUI.Button(new Rect(178f, 125f, 70f, 20f), "Childrens"))
+                if (GUI.Button(new Rect(90f, 75f, 85f, 20f), "Childrens"))
                     currentState = 5;
             }
 
