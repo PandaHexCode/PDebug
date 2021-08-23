@@ -6,10 +6,13 @@ PDebug is a script for Unity (written in C#) that allows users to use "cheat" fu
 Of course there is also an ingame console where the user can see all logs/warnings/erros!
 
 ## Edit an GameObject ingame
-In the Objects tab you can use the mouse and the "i" key to select a GameObject (The mouse position is called up by the target camera, which can also be changed!) As soon as you have selected a GameObject, you can deactivate/activate it, destroy it , the position, rotation & scale display and change, deactivate/activate individual components
+In the Objects tab you can use the mouse and the "i" key to select a GameObject (The mouse position is called up by the target camera, which can also be changed!) As soon as you have selected a GameObject, you can deactivate/activate it, destroy it , copy it , the position, rotation & scale display and change, deactivate/activate individual components
 
 ## Ingame Time Controll
 In the "Time" tab you can display the deltaTime and timeScale, and you can also change the timeScale as you like to speed up or slow down the game.
+
+## Load Scene
+In the "Load Scene" tab you will see a list of all the scenes and next to it a "Load" button with which you can load the selected scene!
 
 ## Easy to implement
 The script was only written with GUI, which means that it does not need any external variables that have to be specified in the editor, it simply has to be added to an object!
