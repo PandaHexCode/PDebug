@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.Events;
 
 public class PDebugDrawGUI : MonoBehaviour{
 
@@ -91,6 +92,12 @@ public class PDebugDrawGUI : MonoBehaviour{
             case 9:
                 DrawApplication();
                 break;
+            case 10:
+                DrawCompValues();
+                break;
+            case 11:
+                DrawCompMethodes();
+                break;
         }
     }
 
@@ -125,55 +132,22 @@ public class PDebugDrawGUI : MonoBehaviour{
     private int loadSceneBeginValue = 0;
     private void DrawLoadScene(){
         GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Load Scene");
-        if (GUI.Button(new Rect(300f, 125f, 70f, 20f), "Back"))
-            currentState = 7;
 
-        int maxProSite = 4;
-        float lastY = 30;
-        int lenght = UnityEngine.SceneManagement.SceneManager.sceneCountInBuildSettings;
-        if (UnityEngine.SceneManagement.SceneManager.sceneCountInBuildSettings > maxProSite)
-        {
-            lenght = maxProSite;
-            if (loadSceneBeginValue + 1 < UnityEngine.SceneManagement.SceneManager.sceneCountInBuildSettings - 3)
-            {
-                if (GUI.Button(new Rect(10f, 125f, 70f, 20f), "↓"))
-                    loadSceneBeginValue++;
-            }
+        UnityEvent<float, int> ev = new UnityEvent<float, int>();
+        ev.AddListener(LoadSceneSection);
 
-            if (loadSceneBeginValue != 0)
-            {
-                if (GUI.Button(new Rect(90f, 125f, 70f, 20f), "↑"))
-                    loadSceneBeginValue--;
-            }
-        }
-        else
-            loadSceneBeginValue = 0;
-
-        int z = 0;
-        for (int i = loadSceneBeginValue; z < lenght; i++)
-        {
-            try
-            {
-                if (i < UnityEngine.SceneManagement.SceneManager.sceneCountInBuildSettings)
-                {
-                    string sceneName = i.ToString();
-
-                    GUI.Label(new Rect(10f, lastY, 300f, 30f), sceneName);
-
-                    if (GUI.Button(new Rect(200f, lastY, 70f, 20f), "Load"))
-                        SceneManager.LoadScene(i);
-
-                    lastY = lastY + 22;
-                    z++;
-                }
-            }
-            catch (Exception e)
-            {
-                Debug.LogWarning(e.Message);
-            }
-        }
+        DrawScroolSection(1, 3, UnityEngine.SceneManagement.SceneManager.sceneCountInBuildSettings, 0, ev);
     }
 
+    private void LoadSceneSection(float lastY, int i){
+        string sceneName = i.ToString();
+
+        GUI.Label(new Rect(10f, lastY, 300f, 30f), sceneName);
+
+        if (GUI.Button(new Rect(200f, lastY, 70f, 20f), "Load"))
+            SceneManager.LoadScene(i);
+
+    }
 
     private void DrawApplication(){
         GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Application");
@@ -184,53 +158,110 @@ public class PDebugDrawGUI : MonoBehaviour{
             Application.runInBackground = !Application.runInBackground;
     }
 
-    private int childrensBeginValue = 0;
     private void DrawChildrens(){
         GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Childrens");
 
-        if (targetObject != null){
-            if (GUI.Button(new Rect(300f, 125f, 70f, 20f), "Back"))
-                currentState = 1;
+        UnityEvent<float, int> ev = new UnityEvent<float, int>();
+        ev.AddListener(DrawChildrensSection);
 
-            int maxProSite = 4;
-            float lastY = 30;
-            int lenght = targetObject.transform.childCount;
-            if (targetObject.transform.childCount > maxProSite){
-                lenght = maxProSite;
-                if (childrensBeginValue + 1 < targetObject.transform.childCount - 3){
-                    if (GUI.Button(new Rect(10f, 125f, 70f, 20f), "↓"))
-                        childrensBeginValue++;
-                }
+        DrawScroolSection(targetObject, 3, targetObject.transform.childCount, 0, ev);
+    }
 
-                if (childrensBeginValue != 0){
-                    if (GUI.Button(new Rect(90f, 125f, 70f, 20f), "↑"))
-                        childrensBeginValue--;
-                }
+    private void DrawChildrensSection(float lastY, int i){
+        GUI.Label(new Rect(10f, lastY, 300f, 30f), targetObject.transform.GetChild(i).name);
+
+        if (GUI.Button(new Rect(200f, lastY, 70f, 20f), "Edit")){
+            currentState = 1;
+            targetObject = targetObject.transform.GetChild(i).gameObject;
+            return;
+        }
+    }
+
+    private Component targetComponent = null;
+
+    private void DrawCompValues(){
+        GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Comp Values");
+
+        UnityEvent<float, int> ev = new UnityEvent<float, int>();
+        ev.AddListener(DrawCompValuesSection);
+
+        DrawScroolSection(targetComponent, 3, targetComponent.GetType().GetProperties().Length, 0, ev);
+    }
+
+    private void DrawCompValuesSection(float lastY, int i){
+        PropertyInfo prop = targetComponent.GetType().GetProperties()[i];
+        if (prop.Name.Equals("rigidbody") | prop.Name.Equals("rigidbody2D") | prop.Name.Equals("camera"))
+            return;
+        else
+        {
+            var value = prop.GetValue(targetComponent);
+
+            GUI.Label(new Rect(10f, lastY, 300f, 25f), prop.Name + " - " + value);
+
+            if (value.GetType().Equals(typeof(bool)))
+            {
+                if (GUI.Button(new Rect(200f, lastY, 70f, 20f), "Change"))
+                    prop.SetValue(targetComponent, !(bool)value);
             }
-            else
-                childrensBeginValue = 0;
-
-            int z = 0;
-            for (int i = childrensBeginValue; z < lenght; i++) {
-                try{
-                    if (i < targetObject.transform.childCount ){
-                        GUI.Label(new Rect(10f, lastY, 300f, 30f), targetObject.transform.GetChild(i).name);
-
-                        if (GUI.Button(new Rect(200f, lastY, 70f, 20f), "Edit"))
-                        {
-                            currentState = 1;
-                            targetObject = targetObject.transform.GetChild(i).gameObject;
-                            return;
-                        }
-
-                        lastY = lastY + 25;
-                        z++;
-                    }
-                }
-                catch (Exception e){
-                    Debug.LogWarning(e.Message);
-                }
+            else if (value.GetType().Equals(typeof(int)))
+            {
+                if (GUI.Button(new Rect(200f, lastY, 30f, 20f), "+"))
+                    prop.SetValue(targetComponent, (int)value + 1);
+                if (GUI.Button(new Rect(235f, lastY, 30f, 20f), "-"))
+                    prop.SetValue(targetComponent, (int)value - 1);
             }
+            else if (value.GetType().Equals(typeof(float)))
+            {
+                if (GUI.Button(new Rect(200f, lastY, 30f, 20f), "+"))
+                    prop.SetValue(targetComponent, (float)value + 0.1f);
+                if (GUI.Button(new Rect(235f, lastY, 30f, 20f), "-"))
+                    prop.SetValue(targetComponent, (float)value - 0.1f);
+            }
+            else if (value.GetType().Equals(typeof(Vector2)))
+            {
+                if (GUI.Button(new Rect(200f, lastY, 30f, 20f), "x+"))
+                    prop.SetValue(targetComponent, (Vector2)value + new Vector2(0.1f, 0));
+                if (GUI.Button(new Rect(235f, lastY, 30f, 20f), "x-"))
+                    prop.SetValue(targetComponent, (Vector2)value + new Vector2(-0.1f, 0));
+                if (GUI.Button(new Rect(270f, lastY, 30f, 20f), "y+"))
+                    prop.SetValue(targetComponent, (Vector2)value + new Vector2(0, 0.1f));
+                if (GUI.Button(new Rect(305f, lastY, 30f, 20f), "y-"))
+                    prop.SetValue(targetComponent, (Vector2)value + new Vector2(0, -0.1f));
+            }
+            else if (value.GetType().Equals(typeof(Vector3)))
+            {
+                if (GUI.Button(new Rect(200f, lastY, 30f, 20f), "x+"))
+                    prop.SetValue(targetComponent, (Vector3)value + new Vector3(0.1f, 0, 0));
+                if (GUI.Button(new Rect(235f, lastY, 30f, 20f), "x-"))
+                    prop.SetValue(targetComponent, (Vector3)value + new Vector3(-0.1f, 0, 0));
+                if (GUI.Button(new Rect(270f, lastY, 30f, 20f), "y+"))
+                    prop.SetValue(targetComponent, (Vector3)value + new Vector3(0, 0.1f, 0));
+                if (GUI.Button(new Rect(305f, lastY, 30f, 20f), "y-"))
+                    prop.SetValue(targetComponent, (Vector3)value + new Vector3(0, -0.1f, 0));
+                if (GUI.Button(new Rect(340f, lastY, 30f, 20f), "z+"))
+                    prop.SetValue(targetComponent, (Vector3)value + new Vector3(0, 0, 0.1f));
+                if (GUI.Button(new Rect(375f, lastY, 30f, 20f), "z-"))
+                    prop.SetValue(targetComponent, (Vector3)value + new Vector3(0, 0, -0.1f));
+            }
+        }
+    }
+
+    private void DrawCompMethodes(){
+        GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Comp Methodes");
+
+        UnityEvent<float, int> ev = new UnityEvent<float, int>();
+        ev.AddListener(DrawCompMethodesSection);
+
+        DrawScroolSection(targetComponent, 3, targetComponent.GetType().GetMethods().Length, 0, ev);
+    }
+
+    private void DrawCompMethodesSection(float lastY, int i){
+        MethodInfo m = targetComponent.GetType().GetMethods()[i];
+        GUI.Label(new Rect(10f, lastY, 300f, 25f), m.Name);
+
+        if (m.GetParameters().Length == 0){
+            if (GUI.Button(new Rect(200f, lastY, 70f, 20f), "Invoke"))
+                m.Invoke(targetComponent, null);
         }
     }
 
@@ -334,76 +365,42 @@ public class PDebugDrawGUI : MonoBehaviour{
             currentState = 1;
     }
 
-    private int componentsBeginValue = 0;
     private void DrawComponents(){
         GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Components");
 
-        if (targetObject != null){
-            if (GUI.Button(new Rect(300f, 125f, 70f, 20f), "Back"))
-                currentState = 1;
+        UnityEvent<float, int> ev = new UnityEvent<float, int>();
+        ev.AddListener(DrawComponentsSection);
 
-            int maxProSite = 4;
-            float lastY = 30;
-            int lenght = targetObject.GetComponents(typeof(Component)).Length;
-            if (targetObject.GetComponents(typeof(Component)).Length > maxProSite)
-            {
-                lenght = maxProSite;
-                if (componentsBeginValue + 1 < targetObject.GetComponents(typeof(Component)).Length - 3)
-                {
-                    if (GUI.Button(new Rect(10f, 125f, 70f, 20f), "↓"))
-                        componentsBeginValue++;
-                }
+        DrawScroolSection(targetObject, 3, targetObject.GetComponents(typeof(Component)).Length, 0, ev);
+    }
 
-                if (componentsBeginValue != 0)
-                {
-                    if (GUI.Button(new Rect(90f, 125f, 70f, 20f), "↑"))
-                        componentsBeginValue--;
-                }
-            }
-            else
-                componentsBeginValue = 0;
+    private void DrawComponentsSection(float lastY, int i){
+        Component comp = targetObject.GetComponents(typeof(Component))[i];
+        string compName = comp.ToString();
+        compName = compName.Replace("UnityEngine.", "");
+        GUI.Label(new Rect(10f, lastY, 300f, 30f), compName);
+        Behaviour behaviour = (Behaviour)comp;
 
-            int z = 0;
-            for (int i = componentsBeginValue; z < lenght; i++)
-            {
-                try
-                {
-                    if (i < targetObject.GetComponents(typeof(Component)).Length)
-                    {
-                        Component comp = targetObject.GetComponents(typeof(Component))[i];
-                        Behaviour behaviour = (Behaviour)comp;
-                        string compName = comp.ToString();
-                        compName = compName.Replace("UnityEngine.", "");
+        string buttonName;
+        if (behaviour.enabled)
+            buttonName = "Disable";
+        else
+            buttonName = "Enable";
 
-                        GUI.Label(new Rect(10f, lastY, 300f, 30f), compName);
+        if (GUI.Button(new Rect(200f, lastY, 70f, 20f), buttonName))
+            behaviour.enabled = !behaviour.enabled;
 
-                        string buttonName;
-                        if (behaviour.enabled)
-                            buttonName = "Disable";
-                        else
-                            buttonName = "Enable";
+        if (GUI.Button(new Rect(280f, lastY, 70f, 20f), "Values")){
+            targetComponent = behaviour;
+            currentState = 10;
+        }
 
-                        if (GUI.Button(new Rect(200f, lastY, 70f, 20f), buttonName))
-                        {
-                            behaviour.enabled = !behaviour.enabled;
-                        }
-
-                        lastY = lastY + 25;
-                        z++;
-                    }
-                    else
-                        return;
-                }
-                catch (Exception e)
-                {
-                    Component comp = targetObject.GetComponents(typeof(Component))[i];
-                    GUI.Label(new Rect(10f, lastY, 300f, 30f), comp.ToString());
-                    lastY = lastY + 25;
-                    z++;
-                }
-            }
+        if (GUI.Button(new Rect(360f, lastY, 70f, 20f), "Methodes")){
+            targetComponent = behaviour;
+            currentState = 11;
         }
     }
+
 
     private void DrawObjects(){
         GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Objects");
@@ -449,6 +446,50 @@ public class PDebugDrawGUI : MonoBehaviour{
         }
         else
             GUI.Label(new Rect(10f, 30f, 500f, 100f), "Please click on an GameObject and press \"i\"!");
+    }
+
+    private int scroolSectionBeginValue = 0;
+    private void DrawScroolSection(object nullCheck, int maxProSite, int lenght, int beginValue, UnityEvent<float, int> forEvent) {
+        if (nullCheck != null){
+            if (GUI.Button(new Rect(300f, 125f, 70f, 20f), "Back")){
+                currentState = 1;
+                scroolSectionBeginValue = 0;
+            }
+
+            float lastY = 30;
+            lenght = lenght + 1;
+            int unchangedLength = lenght;
+
+            if (unchangedLength > maxProSite){
+                lenght = maxProSite;
+                if (scroolSectionBeginValue + 1 < unchangedLength - 3){
+                    if (GUI.Button(new Rect(10f, 125f, 70f, 20f), "↓"))
+                        scroolSectionBeginValue++;
+                }
+
+                if (scroolSectionBeginValue != 0){
+                    if (GUI.Button(new Rect(90f, 125f, 70f, 20f), "↑"))
+                        scroolSectionBeginValue--;
+                }
+            }
+            else
+                scroolSectionBeginValue = 0;
+
+            int z = 0;
+            for (int i = scroolSectionBeginValue; z < lenght; i++){
+                try{
+                    if (i < unchangedLength){
+                        lastY = lastY + 25;
+                        z++;
+
+                        forEvent.Invoke(lastY, i);
+                    }
+                }
+                catch (Exception e){
+                    Debug.Log("MESSAGE" + e.Message + " STACKTRACE" + e.StackTrace);
+                }
+            }
+        }
     }
 
     private void HandleLog(string logString, string stackTrace, UnityEngine.LogType type){
