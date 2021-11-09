@@ -11,6 +11,12 @@ In the Objects tab you can use the mouse and the "i" key to select a GameObject 
 ## Ingame Time Controll
 In the "Time" tab you can display the deltaTime and timeScale, and you can also change the timeScale as you like to speed up or slow down the game.
 
+## Invoke Methods
+You can invoke an Methode for any Component you want and edit the Parameters of it (Currently not supported all Parameters)!
+
+## Change Values ingame
+You can change Values from any Component (Needs to imrpove)
+
 ## Load Scene
 In the "Load Scene" tab you will see a list of all the scenes and next to it a "Load" button with which you can load the selected scene!
 
