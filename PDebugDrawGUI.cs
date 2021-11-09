@@ -10,6 +10,7 @@ public class PDebugDrawGUI : MonoBehaviour{
 
     public static PDebugDrawGUI instance = null;
 
+    private string NAME = "PDebug";
     private int currentState = 0;/*0 = Console , 1 = Objects , 2 = Change , 3 = Components , 4 = Time , 5 = Childrens , 6 = TargetCamera , 7 = Scene , 8 = LoadScene*/
     private string consoleString = string.Empty;/*Console Log*/
     private GameObject targetObject = null;/*Current GameObject in Objects Tab*/
@@ -22,8 +23,8 @@ public class PDebugDrawGUI : MonoBehaviour{
   
         /*Check if an instance allready exits and if exits destroy this else create a new gameobject with the instance*/
         if (instance == null){      
-            if(gameObject.name != "PDEBUG-INSTANCE"){
-                GameObject gm = new GameObject("PDEBUG-INSTANCE");
+            if(gameObject.name != this.NAME+"-INSTANCE"){
+                GameObject gm = new GameObject(this.NAME+"-INSTANCE");
                 instance = gm.AddComponent<PDebugDrawGUI>();
                 DontDestroyOnLoad(instance);
                 Destroy(this);
@@ -98,6 +99,9 @@ public class PDebugDrawGUI : MonoBehaviour{
             case 11:
                 DrawCompMethodes();
                 break;
+            case 12:
+                DrawInvokeWithParameters();
+                break;
         }
     }
 
@@ -115,7 +119,7 @@ public class PDebugDrawGUI : MonoBehaviour{
     }
 
     private void DrawConsole(){
-        GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Console");
+        GUI.Box(new Rect(0f, 0f, 400f, 150f), this.NAME+" - Console");
         GUI.TextField(new Rect(50f, 30f, 300f, 100f), consoleString);
 
         if (GUI.Button(new Rect(50, 128f, 70f, 20f), "Clear"))
@@ -123,7 +127,7 @@ public class PDebugDrawGUI : MonoBehaviour{
     }
 
     private void DrawScene(){
-        GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Scene");
+        GUI.Box(new Rect(0f, 0f, 400f, 150f), this.NAME + " - Scene");
         GUI.Label(new Rect(10f, 30f, 200f, 50f), "ActiveScene: "+SceneManager.GetActiveScene().name);
         if (GUI.Button(new Rect(10f, 70f, 85f, 20f), "Load Scene"))
             currentState = 8;
@@ -131,15 +135,12 @@ public class PDebugDrawGUI : MonoBehaviour{
 
     private int loadSceneBeginValue = 0;
     private void DrawLoadScene(){
-        GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Load Scene");
+        GUI.Box(new Rect(0f, 0f, 400f, 150f), this.NAME + " - Load Scene");
 
-        UnityEvent<float, int> ev = new UnityEvent<float, int>();
-        ev.AddListener(LoadSceneSection);
-
-        DrawScroolSection(1, 3, UnityEngine.SceneManagement.SceneManager.sceneCountInBuildSettings, 0, ev);
+        DrawScroolSection(1, 3, UnityEngine.SceneManagement.SceneManager.sceneCountInBuildSettings, 0, 0);
     }
 
-    private void LoadSceneSection(float lastY, int i){
+    private float LoadSceneSection(float lastY, int i){
         string sceneName = i.ToString();
 
         GUI.Label(new Rect(10f, lastY, 300f, 30f), sceneName);
@@ -147,24 +148,24 @@ public class PDebugDrawGUI : MonoBehaviour{
         if (GUI.Button(new Rect(200f, lastY, 70f, 20f), "Load"))
             SceneManager.LoadScene(i);
 
+        return 0;
     }
 
     private void DrawApplication(){
-        GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Application");
+        GUI.Box(new Rect(0f, 0f, 400f, 150f), this.NAME + " - Application");
         GUI.Label(new Rect(10f, 30f, 200f, 50f), "RunInBackground: " + Application.runInBackground);
         GUI.Label(new Rect(10f, 50f, 200f, 50f), "UnityVersion: " + Application.unityVersion);
-        GUI.Label(new Rect(10f, 120f, 200f, 50f), "PDebug by PandaHexCode");
+        GUI.Label(new Rect(10f, 120f, 200f, 50f), this.NAME+" by PandaHexCode");
         if (GUI.Button(new Rect(170f, 34f, 70f, 15f), "Switch"))
             Application.runInBackground = !Application.runInBackground;
+        if (GUI.Button(new Rect(250f, 34f, 100f, 15f), "Is3D: "+this.is3D))
+            this.is3D = !this.is3D;
     }
 
     private void DrawChildrens(){
-        GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Childrens");
+        GUI.Box(new Rect(0f, 0f, 400f, 150f), this.NAME + " - Childrens");
 
-        UnityEvent<float, int> ev = new UnityEvent<float, int>();
-        ev.AddListener(DrawChildrensSection);
-
-        DrawScroolSection(targetObject, 3, targetObject.transform.childCount, 0, ev);
+        DrawScroolSection(targetObject, 3, targetObject.transform.childCount, 0, 1);
     }
 
     private void DrawChildrensSection(float lastY, int i){
@@ -180,12 +181,9 @@ public class PDebugDrawGUI : MonoBehaviour{
     private Component targetComponent = null;
 
     private void DrawCompValues(){
-        GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Comp Values");
+        GUI.Box(new Rect(0f, 0f, 400f, 150f), this.NAME + " - Comp Values");
 
-        UnityEvent<float, int> ev = new UnityEvent<float, int>();
-        ev.AddListener(DrawCompValuesSection);
-
-        DrawScroolSection(targetComponent, 3, targetComponent.GetType().GetProperties().Length, 0, ev);
+        DrawScroolSection(targetComponent, 3, targetComponent.GetType().GetProperties().Length, 0, 2, 3);
     }
 
     private void DrawCompValuesSection(float lastY, int i){
@@ -194,79 +192,188 @@ public class PDebugDrawGUI : MonoBehaviour{
             return;
         else
         {
-            var value = prop.GetValue(targetComponent);
+            var value = prop.GetValue(targetComponent, null);
 
             GUI.Label(new Rect(10f, lastY, 300f, 25f), prop.Name + " - " + value);
 
             if (value.GetType().Equals(typeof(bool)))
             {
                 if (GUI.Button(new Rect(200f, lastY, 70f, 20f), "Change"))
-                    prop.SetValue(targetComponent, !(bool)value);
+                    prop.SetValue(targetComponent, !(bool)value, null);
             }
             else if (value.GetType().Equals(typeof(int)))
             {
                 if (GUI.Button(new Rect(200f, lastY, 30f, 20f), "+"))
-                    prop.SetValue(targetComponent, (int)value + 1);
+                    prop.SetValue(targetComponent, (int)value + 1, null);
                 if (GUI.Button(new Rect(235f, lastY, 30f, 20f), "-"))
-                    prop.SetValue(targetComponent, (int)value - 1);
+                    prop.SetValue(targetComponent, (int)value - 1, null);
             }
             else if (value.GetType().Equals(typeof(float)))
             {
                 if (GUI.Button(new Rect(200f, lastY, 30f, 20f), "+"))
-                    prop.SetValue(targetComponent, (float)value + 0.1f);
+                    prop.SetValue(targetComponent, (float)value + 0.1f, null);
                 if (GUI.Button(new Rect(235f, lastY, 30f, 20f), "-"))
-                    prop.SetValue(targetComponent, (float)value - 0.1f);
+                    prop.SetValue(targetComponent, (float)value - 0.1f, null);
             }
             else if (value.GetType().Equals(typeof(Vector2)))
             {
                 if (GUI.Button(new Rect(200f, lastY, 30f, 20f), "x+"))
-                    prop.SetValue(targetComponent, (Vector2)value + new Vector2(0.1f, 0));
+                    prop.SetValue(targetComponent, (Vector2)value + new Vector2(0.1f, 0), null);
                 if (GUI.Button(new Rect(235f, lastY, 30f, 20f), "x-"))
-                    prop.SetValue(targetComponent, (Vector2)value + new Vector2(-0.1f, 0));
+                    prop.SetValue(targetComponent, (Vector2)value + new Vector2(-0.1f, 0), null);
                 if (GUI.Button(new Rect(270f, lastY, 30f, 20f), "y+"))
-                    prop.SetValue(targetComponent, (Vector2)value + new Vector2(0, 0.1f));
+                    prop.SetValue(targetComponent, (Vector2)value + new Vector2(0, 0.1f), null);
                 if (GUI.Button(new Rect(305f, lastY, 30f, 20f), "y-"))
-                    prop.SetValue(targetComponent, (Vector2)value + new Vector2(0, -0.1f));
+                    prop.SetValue(targetComponent, (Vector2)value + new Vector2(0, -0.1f), null);
             }
             else if (value.GetType().Equals(typeof(Vector3)))
             {
                 if (GUI.Button(new Rect(200f, lastY, 30f, 20f), "x+"))
-                    prop.SetValue(targetComponent, (Vector3)value + new Vector3(0.1f, 0, 0));
+                    prop.SetValue(targetComponent, (Vector3)value + new Vector3(0.1f, 0, 0), null);
                 if (GUI.Button(new Rect(235f, lastY, 30f, 20f), "x-"))
-                    prop.SetValue(targetComponent, (Vector3)value + new Vector3(-0.1f, 0, 0));
+                    prop.SetValue(targetComponent, (Vector3)value + new Vector3(-0.1f, 0, 0), null);
                 if (GUI.Button(new Rect(270f, lastY, 30f, 20f), "y+"))
-                    prop.SetValue(targetComponent, (Vector3)value + new Vector3(0, 0.1f, 0));
+                    prop.SetValue(targetComponent, (Vector3)value + new Vector3(0, 0.1f, 0), null);
                 if (GUI.Button(new Rect(305f, lastY, 30f, 20f), "y-"))
-                    prop.SetValue(targetComponent, (Vector3)value + new Vector3(0, -0.1f, 0));
+                    prop.SetValue(targetComponent, (Vector3)value + new Vector3(0, -0.1f, 0), null);
                 if (GUI.Button(new Rect(340f, lastY, 30f, 20f), "z+"))
-                    prop.SetValue(targetComponent, (Vector3)value + new Vector3(0, 0, 0.1f));
+                    prop.SetValue(targetComponent, (Vector3)value + new Vector3(0, 0, 0.1f), null);
                 if (GUI.Button(new Rect(375f, lastY, 30f, 20f), "z-"))
-                    prop.SetValue(targetComponent, (Vector3)value + new Vector3(0, 0, -0.1f));
+                    prop.SetValue(targetComponent, (Vector3)value + new Vector3(0, 0, -0.1f), null);
             }
         }
     }
 
     private void DrawCompMethodes(){
-        GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Comp Methodes");
+        GUI.Box(new Rect(0f, 0f, 400f, 150f), this.NAME + " - Comp Methodes");
 
-        UnityEvent<float, int> ev = new UnityEvent<float, int>();
-        ev.AddListener(DrawCompMethodesSection);
-
-        DrawScroolSection(targetComponent, 3, targetComponent.GetType().GetMethods().Length, 0, ev);
+        DrawScroolSection(targetComponent, 3, targetComponent.GetType().GetMethods().Length, 0, 3, 3);
     }
 
     private void DrawCompMethodesSection(float lastY, int i){
         MethodInfo m = targetComponent.GetType().GetMethods()[i];
-        GUI.Label(new Rect(10f, lastY, 300f, 25f), m.Name);
 
-        if (m.GetParameters().Length == 0){
-            if (GUI.Button(new Rect(200f, lastY, 70f, 20f), "Invoke"))
+        string endString = m.Name + "(";
+        foreach (ParameterInfo parm in m.GetParameters()){
+            string type = parm.GetType().Name;
+            endString = endString + " " + parm.Name+",";
+        }  
+        if(m.GetParameters().Length > 0)
+            endString = endString.Remove(endString.Length - 1);
+        endString = endString + " )";
+
+        GUI.Label(new Rect(10f, lastY, 300f, 25f), endString);
+
+        if (GUI.Button(new Rect(300f, lastY, 50f, 20f), "Invoke")){
+            if(m.GetParameters().Length == 0)
                 m.Invoke(targetComponent, null);
+            else{
+                this.method = m;
+                this.currentState = 12;
+            }
+        }
+    }
+
+    private MethodInfo method;
+    private bool wasInitInvoke = false;
+    private void DrawInvokeWithParameters(){
+        GUI.Box(new Rect(0f, 0f, 400f, 150f), this.NAME + " - Invoke");
+        if (GUI.Button(new Rect(300f, 125f, 70f, 20f), "Back")){
+            tempParms.Clear();
+            currentState = 11;
+            wasInitInvoke = false;
+            return;
+        }
+
+        if (GUI.Button(new Rect(200f, 125f, 70f, 20f), "Invoke"))
+            method.Invoke(targetComponent, tempParms.ToArray());
+
+        if (!wasInitInvoke){
+            scroolSectionBeginValue = 0;
+            tempParms.Clear();
+            wasInitInvoke = true;
+
+            foreach (ParameterInfo parm in method.GetParameters()){
+                if (parm.HasDefaultValue)
+                    tempParms.Add(parm.DefaultValue);
+                else{
+                    if (parm.ParameterType.Equals(typeof(bool)))
+                        tempParms.Add(true);
+                    else if (parm.ParameterType.Equals(typeof(int)))
+                        tempParms.Add(1);
+                    else if (parm.ParameterType.Equals(typeof(float)))
+                        tempParms.Add(0.1f);
+                    else if (parm.ParameterType.Equals(typeof(Vector2)))
+                        tempParms.Add(new Vector2(0, 0));
+                    else if (parm.ParameterType.Equals(typeof(Vector3)))
+                        tempParms.Add(new Vector3(0, 0, 0));
+                    else{
+                        currentState = 11;
+                        wasInitInvoke = false;
+                        Debug.LogWarning("Sorry but " + this.NAME + " can't edit this value type(" + parm.ParameterType + ")yet!");
+                        return;
+                    } 
+                }
+            }
+        }
+
+        DrawScroolSection(targetComponent, 3, method.GetParameters().Length, 0, 5);
+    }
+
+    private List<object> tempParms = new List<object>(10);
+    private void DrawInvokeSection(float lastY, int i){
+        ParameterInfo parm = method.GetParameters()[i];
+        object value = tempParms[i];
+
+        GUI.Label(new Rect(10f, lastY, 300f, 25f), parm.Name + " - " + value);
+
+        if (value.GetType().Equals(typeof(bool))){
+            if (GUI.Button(new Rect(200f, lastY, 70f, 20f), "Change"))
+                tempParms[i] = !(bool)value;
+        }
+        else if (value.GetType().Equals(typeof(int))){
+            if (GUI.Button(new Rect(200f, lastY, 30f, 20f), "+"))
+                tempParms[i] = (int)value + 1;
+            if (GUI.Button(new Rect(235f, lastY, 30f, 20f), "-"))
+                tempParms[i] = (int)value - 1;
+        }
+        else if (value.GetType().Equals(typeof(float))){
+            if (GUI.Button(new Rect(200f, lastY, 30f, 20f), "+"))
+                tempParms[i] = (float)value + 0.1f;
+            if (GUI.Button(new Rect(235f, lastY, 30f, 20f), "-"))
+                tempParms[i] = (float)value - 0.1f;
+        }else if (value.GetType().Equals(typeof(Vector2))){
+            if (GUI.Button(new Rect(200f, lastY, 30f, 20f), "x+"))
+                tempParms[i] = (Vector2)value + new Vector2(0.1f, 0);
+            if (GUI.Button(new Rect(235f, lastY, 30f, 20f), "x-"))
+                tempParms[i] = (Vector2)value + new Vector2(-0.1f, 0);
+            if (GUI.Button(new Rect(270f, lastY, 30f, 20f), "y+"))
+                tempParms[i] = (Vector2)value + new Vector2(0, 0.1f);
+            if (GUI.Button(new Rect(305f, lastY, 30f, 20f), "y-"))
+                tempParms[i] = (Vector2)value + new Vector2(0, -0.1f);
+        }else if (value.GetType().Equals(typeof(Vector3))){
+            if (GUI.Button(new Rect(200f, lastY, 30f, 20f), "x+"))
+                tempParms[i] = (Vector3)value + new Vector3(0.1f, 0 ,0);
+            if (GUI.Button(new Rect(235f, lastY, 30f, 20f), "x-"))
+                tempParms[i] = (Vector3)value + new Vector3(-0.1f, 0, 0);
+            if (GUI.Button(new Rect(270f, lastY, 30f, 20f), "y+"))
+                tempParms[i] = (Vector3)value + new Vector3(0, 0.1f, 0);
+            if (GUI.Button(new Rect(305f, lastY, 30f, 20f), "y-"))
+                tempParms[i] = (Vector3)value + new Vector3(0, -0.1f, 0);
+            if (GUI.Button(new Rect(340f, lastY, 30f, 20f), "z+"))
+                tempParms[i] = (Vector3)value + new Vector3(0, 0, 0.1f);
+            if (GUI.Button(new Rect(375f, lastY, 30f, 20f), "z-"))
+                tempParms[i] = (Vector3)value + new Vector3(0, 0, -0.1f);
+        }
+        else{
+            currentState = 11;
+            wasInitInvoke = false;
+            Debug.LogWarning("Sorry but " + this.NAME + " can't edit this value type(" + tempParms[i].GetType() + ")yet!");
         }
     }
 
     private void DrawTargetCamera(){
-        GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Target Camera");
+        GUI.Box(new Rect(0f, 0f, 400f, 150f), this.NAME + " - Target Camera");
         if (GUI.Button(new Rect(300f, 125f, 70f, 20f), "Back"))
             currentState = 1;
 
@@ -292,7 +399,7 @@ public class PDebugDrawGUI : MonoBehaviour{
 
     private string timeInput = "1";
     private void DrawTimeScreen(){
-        GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Time");
+        GUI.Box(new Rect(0f, 0f, 400f, 150f), this.NAME + " - Time");
         GUI.Label(new Rect(10f, 30f, 200f, 50f), "Delta Time: " + Time.deltaTime+"\nTime Scale: "+Time.timeScale);
 
         timeInput = GUI.TextField(new Rect(10f, 65f, 70, 18), timeInput);
@@ -310,7 +417,7 @@ public class PDebugDrawGUI : MonoBehaviour{
     private string scaYInput = "0";
     private string scaZInput = "0";
     private void DrawChange(){
-        GUI.Box(new Rect(0f, 0f, 500f, 150f), "PDEBUG - Change");
+        GUI.Box(new Rect(0f, 0f, 500f, 150f), this.NAME + " - Change");
 
         if (targetObject != null){
             if (GUI.Button(new Rect(400f, 125f, 70f, 20f), "Back"))
@@ -366,12 +473,9 @@ public class PDebugDrawGUI : MonoBehaviour{
     }
 
     private void DrawComponents(){
-        GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Components");
+        GUI.Box(new Rect(0f, 0f, 450f, 150f), this.NAME + " - Components");
 
-        UnityEvent<float, int> ev = new UnityEvent<float, int>();
-        ev.AddListener(DrawComponentsSection);
-
-        DrawScroolSection(targetObject, 3, targetObject.GetComponents(typeof(Component)).Length, 0, ev);
+        DrawScroolSection(targetObject, 3, targetObject.GetComponents(typeof(Component)).Length, 0, 4);
     }
 
     private void DrawComponentsSection(float lastY, int i){
@@ -403,8 +507,8 @@ public class PDebugDrawGUI : MonoBehaviour{
 
 
     private void DrawObjects(){
-        GUI.Box(new Rect(0f, 0f, 400f, 150f), "PDEBUG - Objects");
-        if (GUI.Button(new Rect(10f, 2f, 100f, 20f), "Target Camera"))
+        GUI.Box(new Rect(0f, 0f, 400f, 150f), this.NAME + " - Objects");
+        if (GUI.Button(new Rect(10f, 2.5f, 100f, 20f), "Target Camera"))
             currentState = 6;
 
         if (targetObject != null){
@@ -448,11 +552,16 @@ public class PDebugDrawGUI : MonoBehaviour{
             GUI.Label(new Rect(10f, 30f, 500f, 100f), "Please click on an GameObject and press \"i\"!");
     }
 
+    private int lastEventNumber;
     private int scroolSectionBeginValue = 0;
-    private void DrawScroolSection(object nullCheck, int maxProSite, int lenght, int beginValue, UnityEvent<float, int> forEvent) {
+    private void DrawScroolSection(object nullCheck, int maxProSite, int lenght, int beginValue, int eventNumber, int backState = 1) {
         if (nullCheck != null){
+            if (lastEventNumber != eventNumber)
+                scroolSectionBeginValue = 0;
+            lastEventNumber = eventNumber;
+
             if (GUI.Button(new Rect(300f, 125f, 70f, 20f), "Back")){
-                currentState = 1;
+                currentState = backState;
                 scroolSectionBeginValue = 0;
             }
 
@@ -482,11 +591,30 @@ public class PDebugDrawGUI : MonoBehaviour{
                         lastY = lastY + 25;
                         z++;
 
-                        forEvent.Invoke(lastY, i);
+                        switch (eventNumber){
+                            case 0:
+                                LoadSceneSection(lastY, i);
+                                break;
+                            case 1:
+                                DrawChildrensSection(lastY, i);
+                                break;
+                            case 2:
+                                DrawCompValuesSection(lastY, i);
+                                break;
+                            case 3:
+                                DrawCompMethodesSection(lastY, i);
+                                break;
+                            case 4:
+                                DrawComponentsSection(lastY, i);
+                                break;
+                            case 5:
+                                DrawInvokeSection(lastY, i);
+                                break;
+                        }
                     }
                 }
                 catch (Exception e){
-                    Debug.Log("MESSAGE" + e.Message + " STACKTRACE" + e.StackTrace);
+                    Debug.Log("MESSAGE: " + e.Message + "| STACKTRACE: " + e.StackTrace);
                 }
             }
         }
