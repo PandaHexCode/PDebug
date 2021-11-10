@@ -306,6 +306,8 @@ public class PDebugDrawGUI : MonoBehaviour{
                         tempParms.Add(new Vector2(0, 0));
                     else if (parm.ParameterType.Equals(typeof(Vector3)))
                         tempParms.Add(new Vector3(0, 0, 0));
+                    else if (parm.ParameterType.Equals(typeof(string)))
+                        tempParms.Add("");
                     else{
                         currentState = 11;
                         wasInitInvoke = false;
@@ -363,6 +365,8 @@ public class PDebugDrawGUI : MonoBehaviour{
                 tempParms[i] = (Vector3)value + new Vector3(0, 0, 0.1f);
             if (GUI.Button(new Rect(375f, lastY, 30f, 20f), "z-"))
                 tempParms[i] = (Vector3)value + new Vector3(0, 0, -0.1f);
+        }else if (value.GetType().Equals(typeof(string))){
+            tempParms[i] = GUI.TextField(new Rect(200f, lastY, 100f, 20f), (string)tempParms[i]);
         }
         else{
             currentState = 11;
