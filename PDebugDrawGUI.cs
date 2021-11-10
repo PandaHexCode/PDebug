@@ -565,6 +565,7 @@ public class PDebugDrawGUI : MonoBehaviour{
             }
 
             float lastY = 30;
+            lenght = lenght + 1;
             int unchangedLength = lenght;
 
             if (unchangedLength > maxProSite){
