@@ -17,6 +17,7 @@ public class PDebugDrawGUI : MonoBehaviour{
     private Camera targetCamera = null;/*Camera that calculating the Ray*/
 
     private bool is3D = false;/*This Script use a other Ray for 3D Games!*/
+    private bool logExceptions = false;/*True needs lot more Performance!*/
 
     private void Awake(){
         targetCamera = Camera.main;
@@ -140,15 +141,13 @@ public class PDebugDrawGUI : MonoBehaviour{
         DrawScroolSection(1, 3, UnityEngine.SceneManagement.SceneManager.sceneCountInBuildSettings, 0, 0);
     }
 
-    private float LoadSceneSection(float lastY, int i){
+    private void LoadSceneSection(float lastY, int i){
         string sceneName = i.ToString();
 
         GUI.Label(new Rect(10f, lastY, 300f, 30f), sceneName);
 
         if (GUI.Button(new Rect(200f, lastY, 70f, 20f), "Load"))
             SceneManager.LoadScene(i);
-
-        return 0;
     }
 
     private void DrawApplication(){
@@ -294,7 +293,7 @@ public class PDebugDrawGUI : MonoBehaviour{
             wasInitInvoke = true;
 
             foreach (ParameterInfo parm in method.GetParameters()){
-                if (parm.HasDefaultValue)
+                if (parm.HasDefaultValue)/*Some System.Reflection Versions don't have this Method(parm.HasDefualtValue), then simple remove this*/
                     tempParms.Add(parm.DefaultValue);
                 else{
                     if (parm.ParameterType.Equals(typeof(bool)))
@@ -566,7 +565,6 @@ public class PDebugDrawGUI : MonoBehaviour{
             }
 
             float lastY = 30;
-            lenght = lenght + 1;
             int unchangedLength = lenght;
 
             if (unchangedLength > maxProSite){
@@ -591,30 +589,23 @@ public class PDebugDrawGUI : MonoBehaviour{
                         lastY = lastY + 25;
                         z++;
 
-                        switch (eventNumber){
-                            case 0:
+                        if(eventNumber == 0)
                                 LoadSceneSection(lastY, i);
-                                break;
-                            case 1:
+                        else if(eventNumber == 1)
                                 DrawChildrensSection(lastY, i);
-                                break;
-                            case 2:
-                                DrawCompValuesSection(lastY, i);
-                                break;
-                            case 3:
-                                DrawCompMethodesSection(lastY, i);
-                                break;
-                            case 4:
-                                DrawComponentsSection(lastY, i);
-                                break;
-                            case 5:
-                                DrawInvokeSection(lastY, i);
-                                break;
-                        }
+                        else if (eventNumber == 2)
+                            DrawCompValuesSection(lastY, i);
+                        else if (eventNumber == 3)
+                            DrawCompMethodesSection(lastY, i);
+                        else if (eventNumber == 4)
+                            DrawComponentsSection(lastY, i);
+                        else if (eventNumber == 5)
+                            DrawInvokeSection(lastY, i);
                     }
                 }
                 catch (Exception e){
-                    Debug.Log("MESSAGE: " + e.Message + "| STACKTRACE: " + e.StackTrace);
+                    if(this.logExceptions)
+                        Debug.Log("MESSAGE: " + e.Message + "| STACKTRACE: " + e.StackTrace);
                 }
             }
         }
