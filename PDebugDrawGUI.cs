@@ -1,10 +1,8 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.Events;
 
 public class PDebugDrawGUI : MonoBehaviour{
 
@@ -12,7 +10,7 @@ public class PDebugDrawGUI : MonoBehaviour{
 
     private string NAME = "PDebug";
     private int currentState = 0;/*0 = Console , 1 = Objects , 2 = Change , 3 = Components , 4 = Time , 5 = Childrens , 6 = TargetCamera , 7 = Scene , 8 = LoadScene*/
-    private string consoleString = string.Empty;/*Console Log*/
+    private List<string> consoleLogs = new List<string>();/*Console Log*/
     private GameObject targetObject = null;/*Current GameObject in Objects Tab*/
     private Camera targetCamera = null;/*Camera that calculating the Ray*/
 
@@ -121,10 +119,19 @@ public class PDebugDrawGUI : MonoBehaviour{
 
     private void DrawConsole(){
         GUI.Box(new Rect(0f, 0f, 400f, 150f), this.NAME+" - Console");
-        GUI.TextField(new Rect(50f, 30f, 300f, 100f), consoleString);
 
-        if (GUI.Button(new Rect(50, 128f, 70f, 20f), "Clear"))
-            consoleString = string.Empty;
+        if (GUI.Button(new Rect(300, 128f, 70f, 20f), "Clear"))
+            consoleLogs.Clear();
+        if (GUI.Button(new Rect(300, 108f, 70f, 20f), "Last"))
+            scroolSectionBeginValue = consoleLogs.Count-1;
+        if (GUI.Button(new Rect(300, 88f, 70f, 20f), "First"))
+            scroolSectionBeginValue = 0;
+
+        DrawScroolSection(1, 1, consoleLogs.Count, 0, 6, 0, true);
+    }
+
+    private void DrawConsoleSection(float lastY, int i){
+        GUI.Label(new Rect(10f, 50f, 390f, 100f), consoleLogs[i]);
     }
 
     private void DrawScene(){
@@ -134,14 +141,13 @@ public class PDebugDrawGUI : MonoBehaviour{
             currentState = 8;
     }
 
-    private int loadSceneBeginValue = 0;
     private void DrawLoadScene(){
         GUI.Box(new Rect(0f, 0f, 400f, 150f), this.NAME + " - Load Scene");
 
         DrawScroolSection(1, 3, UnityEngine.SceneManagement.SceneManager.sceneCountInBuildSettings, 0, 0);
     }
 
-    private void LoadSceneSection(float lastY, int i){
+    private void DrawLoadSceneSection(float lastY, int i){
         string sceneName = i.ToString();
 
         GUI.Label(new Rect(10f, lastY, 300f, 30f), sceneName);
@@ -557,15 +563,17 @@ public class PDebugDrawGUI : MonoBehaviour{
 
     private int lastEventNumber;
     private int scroolSectionBeginValue = 0;
-    private void DrawScroolSection(object nullCheck, int maxProSite, int lenght, int beginValue, int eventNumber, int backState = 1) {
+    private void DrawScroolSection(object nullCheck, int maxProSite, int lenght, int beginValue, int eventNumber, int backState = 1, bool noBackButton = false) {
         if (nullCheck != null){
             if (lastEventNumber != eventNumber)
                 scroolSectionBeginValue = 0;
             lastEventNumber = eventNumber;
 
-            if (GUI.Button(new Rect(300f, 125f, 70f, 20f), "Back")){
-                currentState = backState;
-                scroolSectionBeginValue = 0;
+            if (!noBackButton){
+                if (GUI.Button(new Rect(300f, 125f, 70f, 20f), "Back")){
+                    currentState = backState;
+                    scroolSectionBeginValue = 0;
+                }
             }
 
             float lastY = 30;
@@ -574,7 +582,7 @@ public class PDebugDrawGUI : MonoBehaviour{
 
             if (unchangedLength > maxProSite){
                 lenght = maxProSite;
-                if (scroolSectionBeginValue + 1 < unchangedLength - 3){
+                if (scroolSectionBeginValue + 1 < unchangedLength - maxProSite){
                     if (GUI.Button(new Rect(10f, 125f, 70f, 20f), "↓"))
                         scroolSectionBeginValue++;
                 }
@@ -594,10 +602,10 @@ public class PDebugDrawGUI : MonoBehaviour{
                         lastY = lastY + 25;
                         z++;
 
-                        if(eventNumber == 0)
-                                LoadSceneSection(lastY, i);
-                        else if(eventNumber == 1)
-                                DrawChildrensSection(lastY, i);
+                        if (eventNumber == 0)
+                            DrawLoadSceneSection(lastY, i);
+                        else if (eventNumber == 1)
+                            DrawChildrensSection(lastY, i);
                         else if (eventNumber == 2)
                             DrawCompValuesSection(lastY, i);
                         else if (eventNumber == 3)
@@ -606,6 +614,8 @@ public class PDebugDrawGUI : MonoBehaviour{
                             DrawComponentsSection(lastY, i);
                         else if (eventNumber == 5)
                             DrawInvokeSection(lastY, i);
+                        else if (eventNumber == 6)
+                            DrawConsoleSection(lastY, i);
                     }
                 }
                 catch (Exception e){
@@ -617,7 +627,9 @@ public class PDebugDrawGUI : MonoBehaviour{
     }
 
     private void HandleLog(string logString, string stackTrace, UnityEngine.LogType type){
-        consoleString = consoleString + type+" " + logString + "\n" + stackTrace+"\n";
+        string log = type + " " + logString + "\n" + stackTrace + "\n";
+        if (!consoleLogs.Contains(log))
+            consoleLogs.Add(log);
     }
 
     private float StringToFloat(string text){
