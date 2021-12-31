@@ -3,6 +3,11 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using System.Net;
+using System.Net.Sockets;
+using System.Collections;
+using System.Threading;
+using System.Text;
 
 public class PDebugDrawGUI : MonoBehaviour{
 
@@ -17,6 +22,8 @@ public class PDebugDrawGUI : MonoBehaviour{
     private bool is3D = false;/*This Script use a other Ray for 3D Games!*/
     private bool logExceptions = false;/*True needs lot more Performance!*/
 
+    private static PDebugTCP tcp = null; 
+
     private void Awake(){
         targetCamera = Camera.main;
   
@@ -25,6 +32,9 @@ public class PDebugDrawGUI : MonoBehaviour{
             if(gameObject.name != this.NAME+"-INSTANCE"){
                 GameObject gm = new GameObject(this.NAME+"-INSTANCE");
                 instance = gm.AddComponent<PDebugDrawGUI>();
+                tcp = gm.AddComponent<PDebugTCP>();
+                tcp.StartServer();
+                DontDestroyOnLoad(tcp);
                 DontDestroyOnLoad(instance);
                 Destroy(this);
             }
@@ -49,10 +59,14 @@ public class PDebugDrawGUI : MonoBehaviour{
                 }
                 else{/*3D*/         
                     RaycastHit hit;
+                    bool old = Physics.queriesHitTriggers;
+                    Physics.queriesHitTriggers = false;
                     if (Physics.Raycast(ray, out hit)){
                         if (hit.collider != null)
                             targetObject = hit.collider.gameObject;
                     }
+
+                    Physics.queriesHitTriggers = old;
                 }
             }
         }
@@ -101,6 +115,9 @@ public class PDebugDrawGUI : MonoBehaviour{
             case 12:
                 DrawInvokeWithParameters();
                 break;
+            case 13:
+                DrawTCPMenu();
+                break;
         }
     }
 
@@ -113,7 +130,9 @@ public class PDebugDrawGUI : MonoBehaviour{
             currentState = 4;
         if (GUI.Button(new Rect(230f, 155f, 70f, 20f), "Scene"))
             currentState = 7;
-        if (GUI.Button(new Rect(305f, 155f, 70f, 20f), "Applicat-"))
+        if (GUI.Button(new Rect(305f, 155f, 70f, 20f), "TCP"))
+            currentState = 13;
+        if (GUI.Button(new Rect(380f, 155f, 70f, 20f), "Applicat-"))
             currentState = 9;
     }
 
@@ -561,6 +580,31 @@ public class PDebugDrawGUI : MonoBehaviour{
             GUI.Label(new Rect(10f, 30f, 500f, 100f), "Please click on an GameObject and press \"i\"!");
     }
 
+    public void DrawTCPMenu(){
+        GUI.Box(new Rect(0f, 0f, 400f, 150f), this.NAME + " - TCP");
+
+        string connectionText = string.Empty;
+        if (tcp.listener.Server.IsBound){
+            if(tcp.client == null)
+                connectionText = "Waiting for connection...";
+            else{ 
+                if (!tcp.client.Connected)
+                    connectionText = "Waiting for connection...";
+                else
+                    connectionText = "Client is connected.";
+            }
+
+            if (GUI.Button(new Rect(10f, 100f, 70f, 20f), "Stop"))
+                tcp.listener.Stop();
+        }else{
+            connectionText = "TCP-Server is not started.";
+            if (GUI.Button(new Rect(10f, 100f, 70f, 20f), "Start"))
+                tcp.StartServer();
+        }
+
+        GUI.Label(new Rect(10f, 30f, 200f, 50f), connectionText);
+    }
+
     private int lastEventNumber;
     private int scroolSectionBeginValue = 0;
     private void DrawScroolSection(object nullCheck, int maxProSite, int lenght, int beginValue, int eventNumber, int backState = 1, bool noBackButton = false) {
@@ -632,10 +676,366 @@ public class PDebugDrawGUI : MonoBehaviour{
             consoleLogs.Add(log);
     }
 
-    private float StringToFloat(string text){
+    public static float StringToFloat(string text){
         float output = 0;
         float.TryParse(text, out output);
 
         return output;
     }
+
+    public string GetSavedName(){
+        return this.name;
+    }
+
+    public GameObject GetTargetGameObject(){
+        return this.targetObject;
+    }
+
+    public void SetTargetGameObject(GameObject obj){
+        this.targetObject = obj;
+    }
+}
+
+public class PDebugTCP : MonoBehaviour{/*Credits https://gist.github.com/danielbierwirth/0636650b005834204cb19ef5ae6ccedb for help at connection*/ 
+
+    public string ip = "127.0.0.1";
+    public Int32 port = 13000;
+
+    public TcpClient client;
+    public TcpListener listener;
+
+    private Thread tcpListenerThread;
+
+    private string message = null;
+
+    public void StartServer(){
+        Application.runInBackground = true;
+
+        this.tcpListenerThread = new Thread(new ThreadStart(ServerListener));
+        this.tcpListenerThread.IsBackground = true;
+        this.tcpListenerThread.Start();
+    }
+
+    private void Update(){
+        if (!String.IsNullOrEmpty(this.message)){/*Because much Functions are not possible in other Thread then the Main Thread*/
+            PerformCommand(this.message);
+            this.message = null;
+        }
+    }
+
+    private void ServerListener(){
+        IPAddress addr = IPAddress.Parse(this.ip);
+
+        this.listener = new TcpListener(addr, this.port);
+        this.listener.Start();
+
+        Debug.Log("Waiting for a connection...");
+        this.client = null;
+        Byte[] bytes = new Byte[1024];
+
+        try { 
+        while (true){
+            using (this.client = this.listener.AcceptTcpClient()){
+                Debug.Log("Connected!");
+
+                using (NetworkStream stream = this.client.GetStream()){
+                    int lenght;
+
+                    while((lenght = stream.Read(bytes, 0, bytes.Length)) != 0){
+                        var data = new byte[lenght];
+                        Array.Copy(bytes, 0, data, 0, lenght);
+                        message = Encoding.ASCII.GetString(data);
+                    }
+                }
+            }
+        }}catch(Exception e){
+            Debug.Log("Client is disconnected, stopping Server...");
+            this.listener.Stop();
+        }
+    }
+
+    private void PerformCommand(String command){
+        switch (command){
+
+            case "getName":
+                SendClientMessage(PDebugDrawGUI.instance.GetSavedName());
+                break;
+
+            case "getGameName":
+                SendClientMessage(Application.productName);
+                break;
+
+            case "getUnityVersion":
+                SendClientMessage(Application.unityVersion);
+                break;
+
+            case "getTime":
+                SendClientMessage("TimeScale: " + Time.timeScale + ", DeltaTime: " + Time.deltaTime);
+            break;
+
+            case "disable":
+                PDebugDrawGUI.instance.enabled = false;
+                break;
+
+            case "enable":
+                PDebugDrawGUI.instance.enabled = true;
+                break;
+
+            case "listSceneObjects":
+                StartCoroutine(ListSceneObjects());
+            break;
+
+            case "getPosition":
+                SendClientMessage(PDebugDrawGUI.instance.GetTargetGameObject().transform.position.ToString());
+            break;
+
+            case "getRotation":
+                SendClientMessage(PDebugDrawGUI.instance.GetTargetGameObject().transform.rotation.eulerAngles.ToString());
+            break;
+
+            case "getScale":
+                SendClientMessage(PDebugDrawGUI.instance.GetTargetGameObject().transform.localScale.ToString());
+            break;
+
+            case "getInstanceID":
+                SendClientMessage(PDebugDrawGUI.instance.GetTargetGameObject().transform.GetInstanceID().ToString());
+            break;
+
+            case "enableObject":
+                PDebugDrawGUI.instance.GetTargetGameObject().SetActive(true);
+            break;
+
+            case "disableObject":
+                PDebugDrawGUI.instance.GetTargetGameObject().SetActive(false);
+            break;
+
+            case "destroyObject":
+                Destroy(PDebugDrawGUI.instance.GetTargetGameObject());
+            break;
+
+            case "dontDestroyObjectAtLoad":
+                DontDestroyOnLoad(PDebugDrawGUI.instance.GetTargetGameObject());
+            break;
+
+            case "clear":
+                Debug.ClearDeveloperConsole(); 
+            break;
+
+            case "quit":
+                Application.Quit();
+            break;
+
+            case "compareScene":
+                StartCoroutine(CompareScene());
+            break;
+
+            case "fullscreen":
+                if (Screen.fullScreen)
+                    Screen.fullScreen = false;
+                else
+                    Screen.fullScreen = true;
+            break;
+
+            default:
+                string[] args = command.Split(' ');
+
+                if (command.StartsWith("setTargetObject")){
+                    PDebugDrawGUI.instance.SetTargetGameObject(GameObject.Find(ConnectArgs(args, 1)));
+                }else if (command.StartsWith("setPosition")){
+                    float x = PDebugDrawGUI.StringToFloat(args[1]);
+                    float y = PDebugDrawGUI.StringToFloat(args[2]);
+                    float z = PDebugDrawGUI.StringToFloat(args[3]);
+
+                    PDebugDrawGUI.instance.GetTargetGameObject().transform.position = new Vector3(x, y, z);
+                }else if (command.StartsWith("setRotation")){
+                    float x = PDebugDrawGUI.StringToFloat(args[1]);
+                    float y = PDebugDrawGUI.StringToFloat(args[2]);
+                    float z = PDebugDrawGUI.StringToFloat(args[3]);
+
+                    PDebugDrawGUI.instance.GetTargetGameObject().transform.rotation = Quaternion.Euler(x, y, z);
+                }else if (command.StartsWith("setScale")){
+                    float x = PDebugDrawGUI.StringToFloat(args[1]);
+                    float y = PDebugDrawGUI.StringToFloat(args[2]);
+                    float z = PDebugDrawGUI.StringToFloat(args[3]);
+
+                    PDebugDrawGUI.instance.GetTargetGameObject().transform.localScale = new Vector3(x, y, z);
+                }else if (command.StartsWith("translate")){
+                    float x = PDebugDrawGUI.StringToFloat(args[1]);
+                    float y = PDebugDrawGUI.StringToFloat(args[2]);
+                    float z = PDebugDrawGUI.StringToFloat(args[3]);
+
+                    PDebugDrawGUI.instance.GetTargetGameObject().transform.Translate(x, y, z);
+                }else if (command.StartsWith("setTime")){
+                    float time = PDebugDrawGUI.StringToFloat(args[1]);
+                    Time.timeScale = time;
+                }else if (command.StartsWith("saveSceneData")){
+                    int numb = (int) PDebugDrawGUI.StringToFloat(args[1]);
+
+                    if (numb == 0)
+                        savedSceneObjects0 = SaveScene();
+                    else
+                        savedSceneObjects1 = SaveScene();
+                }else if (command.StartsWith("loadSceneData")){
+                    int numb = (int)PDebugDrawGUI.StringToFloat(args[1]);
+
+                    if (numb == 0)
+                        LoadSceneData(savedSceneObjects0);
+                    else
+                        LoadSceneData(savedSceneObjects1);
+                }
+                break;
+        }
+    }
+
+    private List<SaveSceneObject> savedSceneObjects0;
+    private List<SaveSceneObject> savedSceneObjects1;
+
+    [System.Serializable]
+    private class SaveSceneObject{
+        public GameObject obj;
+        public string name;
+        public int instanceID;
+        public Vector3 position;
+        public Vector3 rotation;
+        public Vector3 scale;
+        public bool hasChecked = false;
+
+        public SaveSceneObject(GameObject obj){
+            this.obj = obj;
+            this.name = obj.name;
+            this.instanceID = obj.GetInstanceID();
+            this.position = obj.transform.localPosition;
+            this.rotation = obj.transform.localEulerAngles;
+            this.scale = obj.transform.localScale;
+            this.hasChecked = false;
+        }
+    }
+
+    private void LoadSceneData(List<SaveSceneObject> savs){
+        foreach (SaveSceneObject sav in savs){
+            if(sav.obj != null){
+                sav.obj.transform.localPosition = sav.position;
+                sav.obj.transform.localEulerAngles = sav.rotation;
+                sav.obj.transform.localScale = sav.scale;
+            }
+        }
+    }
+
+    private IEnumerator CompareScene(){
+        if (savedSceneObjects0 == null | savedSceneObjects1 == null){
+            SendClientMessage("Can't compare Scene, plase save the Scene using saveSceneData 0 and saveSceneData 1.");
+            SendClientMessage("endSceneList123");
+            yield return null;
+        }else{ 
+
+            foreach (SaveSceneObject item in savedSceneObjects0){
+                item.hasChecked = false;
+            }
+
+            foreach (SaveSceneObject item in savedSceneObjects1){
+                item.hasChecked = false;
+            }
+
+            foreach (SaveSceneObject sav0 in savedSceneObjects0){
+                SaveSceneObject sav1 = GetSavFromInstanceID(sav0);
+                if (sav1 != null){
+                     if (sav0.position != sav1.position)
+                         SendClientMessage(sav0.name + " changed Position " + "0: " + sav0.position + ", 1:" + sav1.position + "\n");
+                     if (sav0.rotation != sav1.rotation)
+                         SendClientMessage(sav0.name + " changed Rotation " + "0: " + sav0.rotation + ", 1:" + sav1.rotation + "\n");
+                     if (sav0.scale != sav1.scale)
+                         SendClientMessage(sav0.name + " changed Scale " + "0: " + sav0.scale + ", 1:" + sav1.scale + "\n");
+
+                     sav0.hasChecked = true;
+                     sav1.hasChecked = true;
+                }else
+                     SendClientMessage(sav0.name + " exited in 0 but destroyed in 1!\n");
+            }
+
+            foreach (SaveSceneObject item in savedSceneObjects1){
+                if (!item.hasChecked)
+                    SendClientMessage(item.name + " was created in 1!\n");
+            }
+        }
+
+        yield return new WaitForSeconds(0.1f);
+        SendClientMessage("endSceneList123");
+    }
+
+    private SaveSceneObject GetSavFromInstanceID(SaveSceneObject sav){
+        foreach (SaveSceneObject item in savedSceneObjects1){
+            if (sav.instanceID == item.instanceID)
+                return item;
+        }
+
+        return null;
+    }
+
+    private List<SaveSceneObject> SaveScene(){
+        List<SaveSceneObject> savedSceneObjects = new List<SaveSceneObject>();
+
+        savedSceneObjects.Clear();
+
+        GameObject[] allObjects = UnityEngine.Object.FindObjectsOfType<GameObject>();
+        foreach (GameObject obj in allObjects){
+            savedSceneObjects.Add(new SaveSceneObject(obj));
+        }
+
+        return savedSceneObjects;
+    }
+
+
+    private IEnumerator ListSceneObjects(){
+        GameObject[] allObjects = UnityEngine.Object.FindObjectsOfType<GameObject>();
+        List<string> list = new List<string>();
+   
+        foreach (GameObject obj in allObjects){
+            list.Add(obj.name);
+        }
+
+        list.Sort();
+
+        foreach(string oname in list){
+            string n = oname;
+            if (!oname.Contains("\n"))
+                n = oname + "\n";
+
+            SendClientMessage(n);
+        }
+
+        yield return new WaitForSeconds(1);
+
+        SendClientMessage("endSceneList123");
+    }
+
+    public void SendClientMessage(String message){
+        if (this.client == null)
+            return;
+
+        try{
+            NetworkStream stream = client.GetStream();
+            if (stream.CanWrite){
+                byte[] messageAsByteArray = Encoding.ASCII.GetBytes(message);
+                stream.Write(messageAsByteArray, 0, messageAsByteArray.Length);
+            }
+        }catch (SocketException e){
+
+        }
+    }
+
+    public string ConnectArgs(string[] args, int beginValue){
+        string message = string.Empty;
+
+        for (int i = beginValue; i < args.Length; i++){
+            args[i] = args[i] + " ";
+        }
+
+        args[args.Length-1] = args[args.Length-1].Substring(0, args[args.Length-1].Length-1);
+
+        for (int i = beginValue; i < args.Length; i++){
+            message = message + args[i];
+        }
+        return message;
+    }
+
 }
