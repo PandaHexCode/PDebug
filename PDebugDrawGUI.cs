@@ -8,6 +8,15 @@ using System.Net.Sockets;
 using System.Collections;
 using System.Threading;
 using System.Text;
+using System.CodeDom.Compiler;
+using System.Linq;
+using System.IO;
+using Microsoft.Win32;
+using Microsoft.CSharp;/*Some Versions dont have this, just delete it.*/
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Text.RegularExpressions;
+using UnityEngine.Profiling;
 
 public class PDebugDrawGUI : MonoBehaviour{
 
@@ -118,6 +127,9 @@ public class PDebugDrawGUI : MonoBehaviour{
             case 13:
                 DrawTCPMenu();
                 break;
+            case 14:
+                DrawStats();
+                break;
         }
     }
 
@@ -132,7 +144,9 @@ public class PDebugDrawGUI : MonoBehaviour{
             currentState = 7;
         if (GUI.Button(new Rect(305f, 155f, 70f, 20f), "TCP"))
             currentState = 13;
-        if (GUI.Button(new Rect(380f, 155f, 70f, 20f), "Applicat-"))
+        if (GUI.Button(new Rect(5f, 180f, 70f, 20f), "Stats"))
+            currentState = 14;
+        if (GUI.Button(new Rect(80f, 180f, 80f, 20f), "Application"))
             currentState = 9;
     }
 
@@ -158,6 +172,15 @@ public class PDebugDrawGUI : MonoBehaviour{
         GUI.Label(new Rect(10f, 30f, 200f, 50f), "ActiveScene: "+SceneManager.GetActiveScene().name);
         if (GUI.Button(new Rect(10f, 70f, 85f, 20f), "Load Scene"))
             currentState = 8;
+    }
+
+    private void DrawStats(){
+        GUI.Box(new Rect(0f, 0f, 400f, 150f), this.NAME + " - Stats");
+
+        float fps = (int)(1f / Time.unscaledDeltaTime);
+
+        GUI.Label(new Rect(10f, 30f, 200f, 50f), "FPS: " + fps + "\nMonoUsedSize: " + Profiler.GetMonoUsedSize() +
+            "\nMonoHeapSize: " + Profiler.GetMonoHeapSize());
     }
 
     private void DrawLoadScene(){
@@ -202,7 +225,7 @@ public class PDebugDrawGUI : MonoBehaviour{
         }
     }
 
-    private Component targetComponent = null;
+    private UnityEngine.Component targetComponent = null;
 
     private void DrawCompValues(){
         GUI.Box(new Rect(0f, 0f, 400f, 150f), this.NAME + " - Comp Values");
@@ -336,7 +359,7 @@ public class PDebugDrawGUI : MonoBehaviour{
                     else{
                         currentState = 11;
                         wasInitInvoke = false;
-                        Debug.LogWarning("Sorry but " + this.NAME + " can't edit this value type(" + parm.ParameterType + ")yet!");
+                        UnityEngine.Debug.LogWarning("Sorry but " + this.NAME + " can't edit this value type(" + parm.ParameterType + ")yet!");
                         return;
                     } 
                 }
@@ -396,7 +419,7 @@ public class PDebugDrawGUI : MonoBehaviour{
         else{
             currentState = 11;
             wasInitInvoke = false;
-            Debug.LogWarning("Sorry but " + this.NAME + " can't edit this value type(" + tempParms[i].GetType() + ")yet!");
+            UnityEngine.Debug.LogWarning("Sorry but " + this.NAME + " can't edit this value type(" + tempParms[i].GetType() + ")yet!");
         }
     }
 
@@ -420,7 +443,7 @@ public class PDebugDrawGUI : MonoBehaviour{
                 lastY = lastY + 25;
             }
             catch (Exception e){
-                Debug.LogWarning(e.Message);
+                UnityEngine.Debug.LogWarning(e.Message);
             }
         }
     }
@@ -503,11 +526,11 @@ public class PDebugDrawGUI : MonoBehaviour{
     private void DrawComponents(){
         GUI.Box(new Rect(0f, 0f, 450f, 150f), this.NAME + " - Components");
 
-        DrawScroolSection(targetObject, 3, targetObject.GetComponents(typeof(Component)).Length, 0, 4);
+        DrawScroolSection(targetObject, 3, targetObject.GetComponents(typeof(UnityEngine.Component)).Length, 0, 4);
     }
 
     private void DrawComponentsSection(float lastY, int i){
-        Component comp = targetObject.GetComponents(typeof(Component))[i];
+        UnityEngine.Component comp = targetObject.GetComponents(typeof(UnityEngine.Component))[i];
         string compName = comp.ToString();
         compName = compName.Replace("UnityEngine.", "");
         GUI.Label(new Rect(10f, lastY, 300f, 30f), compName);
@@ -664,10 +687,14 @@ public class PDebugDrawGUI : MonoBehaviour{
                 }
                 catch (Exception e){
                     if(this.logExceptions)
-                        Debug.Log("MESSAGE: " + e.Message + "| STACKTRACE: " + e.StackTrace);
+                        UnityEngine.Debug.Log("MESSAGE: " + e.Message + "| STACKTRACE: " + e.StackTrace);
                 }
             }
         }
+    }
+
+    public void AddComponentFromFile(string path){
+        /*Not finished implemented...*/
     }
 
     private void HandleLog(string logString, string stackTrace, UnityEngine.LogType type){
@@ -693,6 +720,10 @@ public class PDebugDrawGUI : MonoBehaviour{
 
     public void SetTargetGameObject(GameObject obj){
         this.targetObject = obj;
+    }
+
+    public void SetCurrentState(int state){
+        this.currentState = state;
     }
 }
 
@@ -729,14 +760,14 @@ public class PDebugTCP : MonoBehaviour{/*Credits https://gist.github.com/danielb
         this.listener = new TcpListener(addr, this.port);
         this.listener.Start();
 
-        Debug.Log("Waiting for a connection...");
+        UnityEngine.Debug.Log("Waiting for a connection...");
         this.client = null;
         Byte[] bytes = new Byte[1024];
 
         try { 
         while (true){
             using (this.client = this.listener.AcceptTcpClient()){
-                Debug.Log("Connected!");
+                UnityEngine.Debug.Log("Connected!");
 
                 using (NetworkStream stream = this.client.GetStream()){
                     int lenght;
@@ -749,7 +780,7 @@ public class PDebugTCP : MonoBehaviour{/*Credits https://gist.github.com/danielb
                 }
             }
         }}catch(Exception e){
-            Debug.Log("Client is disconnected, stopping Server...");
+            UnityEngine.Debug.Log("Client is disconnected, stopping Server...");
             this.listener.Stop();
         }
     }
@@ -818,7 +849,7 @@ public class PDebugTCP : MonoBehaviour{/*Credits https://gist.github.com/danielb
             break;
 
             case "clear":
-                Debug.ClearDeveloperConsole(); 
+                UnityEngine.Debug.ClearDeveloperConsole(); 
             break;
 
             case "quit":
@@ -882,6 +913,12 @@ public class PDebugTCP : MonoBehaviour{/*Credits https://gist.github.com/danielb
                         LoadSceneData(savedSceneObjects0);
                     else
                         LoadSceneData(savedSceneObjects1);
+                }else if (command.StartsWith("addScriptFromPath")){
+                    PDebugDrawGUI.instance.AddComponentFromFile(ConnectArgs(args, 1));
+                }else if (command.StartsWith("setCurrentState")){
+                    int numb = (int)PDebugDrawGUI.StringToFloat(args[1]);
+
+                    PDebugDrawGUI.instance.SetCurrentState(numb);
                 }
                 break;
         }
