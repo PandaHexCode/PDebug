@@ -179,8 +179,8 @@ public class PDebugDrawGUI : MonoBehaviour{
 
         float fps = (int)(1f / Time.unscaledDeltaTime);
 
-        GUI.Label(new Rect(10f, 30f, 200f, 50f), "FPS: " + fps + "\nMonoUsedSize: " + Profiler.GetMonoUsedSize() +
-            "\nMonoHeapSize: " + Profiler.GetMonoHeapSize());
+        GUI.Label(new Rect(10f, 30f, 200f, 550f), "FPS: " + fps + "\nMonoUsedSize: " + Profiler.GetMonoUsedSize() +
+            "\nMonoHeapSize: " + Profiler.GetMonoHeapSize() + "\nMaxUsedMemory: " + Profiler.maxUsedMemory + "\nAreCount: " + Profiler.areaCount);
     }
 
     private void DrawLoadScene(){
