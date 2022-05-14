@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace PDebugTCPClient{
@@ -10,6 +12,8 @@ namespace PDebugTCPClient{
         private static Int32 port = 13000;
         private static NetworkStream stream = null;
         private static TcpClient client = null;
+
+        private static Thread consoleListeningThread;
 
         public static void Main(string[] args){
             Start();      
@@ -37,9 +41,29 @@ namespace PDebugTCPClient{
 
             Console.WriteLine("Connected to " + GetCommand("getName") + ", Game: " + GetCommand("getGameName") + ", UnityVersion: " + GetCommand("getUnityVersion"));
 
+            consoleListeningThread = new Thread(ConsoleListening);
+            consoleListeningThread.IsBackground = true;
+            consoleListeningThread.Start();
             while (true){
                 string message = Console.ReadLine();
                 SendCommand(message);
+            }
+        }
+
+        private static void ConsoleListening(){
+            while (true){
+                Byte[] bytes = new Byte[1024];
+                using (NetworkStream stream = client.GetStream()){
+                    int lenght;
+
+                    while ((lenght = stream.Read(bytes, 0, bytes.Length)) != 0){
+                        var data = new byte[lenght];
+                        Array.Copy(bytes, 0, data, 0, lenght);
+                        string message = Encoding.ASCII.GetString(data);
+                        if (message.StartsWith("CONSOLE: "))
+                            Console.WriteLine(message);
+                    }
+                }
             }
         }
 
