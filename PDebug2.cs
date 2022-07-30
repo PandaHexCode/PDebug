@@ -287,6 +287,7 @@ namespace PDebug {
                 this.currentState = 8;
         }
 
+        private Light customLight = null;
         private GameObject oldCamera;
         private void DrawOther(){
             GUI.Box(new Rect(0f, 0f, 400f, 150f), this.NAME + " - Other");
@@ -299,6 +300,18 @@ namespace PDebug {
                 this.currentState = 16;
             if (GUI.Button(new Rect(10f, 100f, 85f, 20f), "Physics"))
                 this.currentState = 18;
+
+            string tt = "CLight: Off";
+            if (this.customLight != null)
+                tt = "Cight: On";
+            if (GUI.Button(new Rect(100f, 100f, 85f, 20f), tt)){
+                if(this.customLight != null){
+                    Destroy(this.customLight.gameObject);
+                }else{
+                    this.customLight = new GameObject("CustomLight").AddComponent<Light>();
+                    this.customLight.type = LightType.Directional;
+                }
+            }
 
             string freeCamString = "FreeCam";
             if(PDebug2.freeCam != null)
